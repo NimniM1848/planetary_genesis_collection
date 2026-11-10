@@ -11,6 +11,8 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+/* hidden 属性（隠す指定）は、他の CSS の display 指定に負けずに、必ず効かせる（canvas や img など、display を指定した要素が、隠れずに残るのを防ぐ） */
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);

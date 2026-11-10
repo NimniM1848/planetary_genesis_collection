@@ -428,6 +428,17 @@ test('タイトルは「惑星系創造」、副題は「〜創って、見守�
   assert.ok(!html.includes('見届けよう'), '古い副題が残っている');
   assert.ok(html.includes('content="〜創って、見守って、集める〜"'), '共有されたときの説明（og:description）も同じ副題');
 });
+test('隠す指定(hidden)は、CSS の display に負けずに効く（共有の画像の上に、長押しできない canvas が残らない）', () => {
+  const css = readFileSync(new URL('../css/style.css', import.meta.url), 'utf8');
+  assert.ok(/\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/.test(css), '[hidden] { display: none !important; } が無い');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  // 共有の画像: canvas（描画用）と img（保存できる画像）が、同じクラスで display を指定されているので、この規則が必要
+  assert.ok(/\.share-canvas\s*\{[^}]*display:\s*block/.test(css), '前提: .share-canvas は display: block を指定している');
+  assert.ok(html.includes('id="share-img"') && html.includes('class="share-canvas"'));
+  // hidden を切り替える要素（JS で .hidden を使う id）すべてが、HTML に存在する
+  const ids = [...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+  for (const id of ['share-canvas', 'share-img', 'pop', 'toast', 'viewer', 'result', 'dex', 'intro', 'share-dialog']) assert.ok(ids.includes(id), id);
+});
 test('紹介カード: 公開アドレスの絶対アドレスで、og:image などが入り、画像ファイルが存在する（X に貼ったときの画像つきカード）', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const URL_ = 'https://nimnim1848.github.io/planetary_genesis_collection/';
