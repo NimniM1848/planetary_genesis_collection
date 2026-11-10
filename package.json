@@ -1,0 +1,9 @@
+{
+  "name": "planet-create",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.js && node tests/ui.js && node tests/dex.js && node tests/robustness.js && node tests/app_smoke.js && node tests/app_share_smoke.js && node tests/serve.js",
+    "batch": "node harness/batch.js"
+  }
+}

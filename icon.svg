@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="惑星系創造">
+  <!-- harness/make_icons.py の図形と同じ。変えるときは両方を直す -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2c70"/>
+      <stop offset="1" stop-color="#060a1c"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#ffc85a" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#ffc85a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff4be"/>
+      <stop offset="1" stop-color="#ffba48"/>
+    </radialGradient>
+    <radialGradient id="planet" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#76c4ff"/>
+      <stop offset="1" stop-color="#2e5cb2"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ffa870"/>
+      <stop offset="1" stop-color="#b05234"/>
+    </radialGradient>
+    <clipPath id="planet-clip"><circle cx="402" cy="261" r="40"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g fill="#dce6ff" fill-opacity="0.75">
+    <circle cx="90" cy="120" r="4.5"/><circle cx="420" cy="92" r="3.5"/><circle cx="446" cy="404" r="4"/>
+    <circle cx="118" cy="430" r="3.5"/><circle cx="170" cy="62" r="2.5"/><circle cx="60" cy="300" r="3"/>
+  </g>
+  <ellipse cx="256" cy="256" rx="200" ry="100" transform="rotate(-30 256 256)" fill="none" stroke="#8cbcff" stroke-opacity="0.92" stroke-width="11"/>
+  <circle cx="256" cy="256" r="135" fill="url(#glow)"/>
+  <circle cx="256" cy="256" r="62" fill="url(#sun)"/>
+  <circle cx="402" cy="261" r="40" fill="url(#planet)"/>
+  <rect x="362" y="249" width="80" height="12" fill="#2e5cb2" fill-opacity="0.45" clip-path="url(#planet-clip)"/>
+  <circle cx="110" cy="251" r="20" fill="url(#moon)"/>
+</svg>

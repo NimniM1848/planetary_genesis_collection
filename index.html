@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070a14">
+<title>惑星系創造</title>
+<meta name="description" content="〜創って、見守って、集める〜 恒星と円盤の条件を決めて、惑星系ができる様子を見守り、図鑑に集めるゲーム。">
+<meta property="og:title" content="惑星系創造">
+<meta property="og:description" content="〜創って、見守って、集める〜">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<noscript><p class="bootmsg">このゲームは JavaScript を使います。ブラウザの設定で JavaScript を有効にして、ページを開き直してください。</p></noscript>
+<p class="bootmsg" id="bootMsg" hidden></p>
+<script>
+  // ファイルを直接開いた（file://）ときや、古いブラウザでは、このゲームの本体（ES Modules）が動かない。白い画面のままにしないよう、理由を出す
+  (function () {
+    var box = document.getElementById('bootMsg');
+    if (location.protocol === 'file:') {
+      box.textContent = 'index.html をファイルとして直接開くと、このゲームは動きません。公開されている URL から開くか、パソコンで簡易サーバーを起動して（README の「動かし方」）、http://localhost:8000/ のようなアドレスで開いてください。';
+      box.hidden = false;
+    }
+  })();
+</script>
+<script nomodule>
+  document.getElementById('bootMsg').textContent = 'お使いのブラウザは、このゲームに対応していません。新しいバージョンの Chrome・Safari・Firefox・Edge などで開いてください。';
+  document.getElementById('bootMsg').hidden = false;
+</script>
+<main>
+  <header>
+    <h1><img src="icon.svg" class="logo" width="44" height="44" alt="">惑星系創造</h1>
+    <p class="lead">〜創って、見守って、集める〜</p>
+    <nav class="tabs" aria-label="画面の切り替え">
+      <button id="tab-make" type="button" aria-pressed="true">つくる</button>
+      <button id="tab-dex" type="button" aria-pressed="false">図鑑 <span id="dex-badge" class="badge"></span></button>
+      <button id="btn-howto" type="button" class="howto">遊び方</button>
+    </nav>
+  </header>
+  <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
+  <p id="share-note-banner" class="banner" hidden></p>
+
+  <div id="view-make">
+
+  <section id="setup" aria-label="設定">
+    <div class="chips" id="presets" role="group" aria-label="プリセット"></div>
+    <p id="preset-note" class="note"></p>
+
+    <section class="disk-preview" aria-label="初期の円盤">
+      <h3>初期の円盤</h3>
+      <canvas id="diskpreview" class="diskpreview" aria-label="この条件の、初期の円盤を上から見た図"></canvas>
+      <p id="diskpreview-note" class="note"></p>
+      <p class="hint">青 = ガス、橙 = 固体（惑星の材料）、緑の帯 = ハビタブルゾーン、点線 = スノーライン（この外側では氷ができる）、白い点 = 惑星の種ができる位置（大きいほど重い）。種の数と位置は、円盤の条件から決まります。条件を引き直したり、値を変えたりすると、円盤も種も変わります。</p>
+    </section>
+
+    <details id="advanced">
+      <summary>詳細設定</summary>
+      <div class="form">
+        <label>恒星の重さ（太陽 = 1）<input id="f-mstar" type="number" step="0.05" min="0.5" max="1.5" inputmode="decimal"><small id="h-f-mstar" class="hint-f"></small></label>
+        <label>恒星の明るさ（太陽 = 1）<input id="f-lum" type="number" step="0.1" min="0.1" max="5" inputmode="decimal"><small id="h-f-lum" class="hint-f"></small></label>
+        <label>金属量 Z（太陽 = 1）<input id="f-z" type="number" step="0.1" min="0.2" max="2.5" inputmode="decimal"><small id="h-f-z" class="hint-f"></small></label>
+        <label>円盤の重さ（太陽の何倍か）<input id="f-dmass" type="number" step="0.005" min="0.005" max="0.08" inputmode="decimal"><small id="h-f-dmass" class="hint-f"></small></label>
+        <label>円盤の内縁（恒星からの距離）[AU]<input id="f-rin" type="number" step="0.01" min="0.02" max="0.2" inputmode="decimal"><small id="h-f-rin" class="hint-f"></small></label>
+        <label>円盤の外縁（恒星からの距離）[AU]<input id="f-rout" type="number" step="1" min="15" max="80" inputmode="decimal"><small id="h-f-rout" class="hint-f"></small></label>
+        <label>円盤の寿命 [百万年]<input id="f-tlife" type="number" step="0.5" min="1" max="6" inputmode="decimal"><small id="h-f-tlife" class="hint-f"></small></label>
+        <label>表面密度の指数 p<input id="f-p" type="number" step="0.1" min="0.5" max="1.5" inputmode="decimal"><small id="h-f-p" class="hint-f"></small></label>
+        <label>シード<input id="f-seed" type="number" step="1" min="0" max="999999999" inputmode="numeric"><small id="h-f-seed" class="hint-f"></small></label>
+      </div>
+      <p id="structures-note" class="note"></p>
+      <button id="close-advanced" type="button" class="close-details">詳細設定を閉じる</button>
+    </details>
+
+    <label class="toggle"><input id="opt-random" type="checkbox" checked> ランダム設定にする（つくるたびに、新しい条件になります）</label>
+    <div class="row">
+      <button id="btn-random" type="button">条件を引き直す</button>
+      <button id="btn-run" type="button" class="primary">惑星系をつくる</button>
+    </div>
+    <p id="roll-note" class="note roll-note"></p>
+    <p id="err" class="err" role="alert"></p>
+  </section>
+
+  <section id="viewer" hidden aria-label="再生">
+    <div class="viewer-grid">
+      <div class="viewer-main">
+        <div class="stagebar">
+          <span id="stage" class="stage">円盤と種</span>
+          <span id="slowtag" class="slowtag" hidden>スロー再生</span>
+          <span id="clock" class="clock">t = 0年</span>
+        </div>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="canvas" aria-label="惑星系を上から見た図"></canvas>
+          <div id="pop" class="pop" hidden></div>
+        </div>
+        <input id="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="時間">
+        <details id="planet-legend-box" class="planet-legend legend-box">
+          <summary>惑星の系統（色）の凡例</summary>
+          <ul id="planet-legend" class="pl-list"></ul>
+          <p class="hint">点の大きさは惑星の半径です。数字は、いま軌道上にある個数です。軌道は、離心率が大きいほど細長い楕円（オレンジ色の線）で描きます。</p>
+          <button id="close-planet-legend" type="button" class="close-details">凡例を閉じる</button>
+        </details>
+      </div>
+      <div class="viewer-side">
+        <div class="controls">
+          <button id="btn-play" type="button" class="primary big" aria-label="再生・一時停止">一時停止</button>
+          <div class="speeds" role="group" aria-label="再生速度">
+            <button type="button" data-speed="1" aria-pressed="true">1×</button>
+            <button type="button" data-speed="2" aria-pressed="false">2×</button>
+            <button type="button" data-speed="4" aria-pressed="false">4×</button>
+          </div>
+          <button id="btn-replay" type="button">最初から見る</button>
+          <button id="btn-skip" type="button">完成まで飛ばす</button>
+        </div>
+        <div class="slowset">
+          <span id="slowset-label">できごとのスロー</span>
+          <div class="speeds" role="group" aria-labelledby="slowset-label">
+            <button type="button" data-slow="1" aria-pressed="false">オフ</button>
+            <button type="button" data-slow="0.12" aria-pressed="false">ふつう</button>
+            <button type="button" data-slow="0.06" aria-pressed="true">ゆっくり</button>
+          </div>
+        </div>
+        <label class="toggle"><input id="opt-hz" type="checkbox" checked> ハビタブルゾーンを表示</label>
+        <label class="toggle"><input id="opt-sound" type="checkbox"> 効果音（できごとの音）</label>
+        <p id="status" class="note" aria-live="polite"></p>
+        <p class="hint side-hint">できごとの前後は、時間の進みが自動でゆっくりになります。完成した後も惑星は回り続けます。止めたいときは「一時停止」を押すか、惑星をタップしてください。止まっている間は、惑星の情報が図の上に出ます。</p>
+        <details id="legend-box" class="legend-box">
+          <summary>図の見かた（印の意味）</summary>
+          <ul id="legend" class="legend-list"></ul>
+          <button id="close-legend" type="button" class="close-details">凡例を閉じる</button>
+        </details>
+        <h3>できごと（押すと、その時に戻れます）</h3>
+        <ul id="eventlog" class="eventlog" aria-label="できごと"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" hidden aria-label="結果">
+    <h2 id="res-title"></h2>
+    <p id="res-sub" class="note"></p>
+    <p id="res-rarity" class="rarity"></p>
+    <p id="res-reg" class="note"></p>
+    <div class="row res-actions">
+      <button id="btn-share-system" type="button">共有する</button>
+    </div>
+    <h3>なぜこの惑星系になったか</h3>
+    <ul id="res-simple" class="reasons"></ul>
+    <button id="btn-detail" type="button" aria-expanded="false" aria-controls="res-detail">くわしく見る</button>
+    <div id="res-detail" class="detail" hidden>
+      <h4>くわしい理由</h4>
+      <ul id="res-reasons" class="reasons"></ul>
+      <h4>できごとの年表（押すと、その時に戻れます）</h4>
+      <ol id="res-timeline" class="timeline"></ol>
+    </div>
+    <h3>できた惑星</h3>
+    <div id="res-planets" class="planets"></div>
+    <div class="row">
+      <button id="btn-again" type="button" class="primary">同じ条件で、別のシードでつくる</button>
+      <button id="btn-back" type="button">設定に戻る</button>
+    </div>
+  </section>
+  </div>
+
+  <section id="dex" hidden aria-label="図鑑">
+    <div class="dex-tabs" role="group" aria-label="図鑑の種類">
+      <button id="dex-tab-planets" type="button" aria-pressed="true">惑星図鑑</button>
+      <button id="dex-tab-systems" type="button" aria-pressed="false">惑星系図鑑</button>
+    </div>
+    <div id="dex-planets">
+      <p id="dex-progress" class="dex-progress"></p>
+      <div class="gridwrap"><table id="dex-grid" class="dexgrid" aria-label="分類とタグのマス"></table></div>
+      <p class="hint">マスは「分類 × 特徴タグ」。埋まったマスを押すと、その惑星だけを表示します。「—」は、この世界ではまだ見つかっていない組み合わせです。</p>
+      <div class="sortbar">
+        <span id="dex-filter"></span>
+        <div class="speeds" role="group" aria-label="並べ方">
+          <button type="button" data-dex-sort="rarity" aria-pressed="true">希少度順</button>
+          <button type="button" data-dex-sort="new" aria-pressed="false">新しい順</button>
+        </div>
+      </div>
+      <div id="dex-plist" class="planets"></div>
+    </div>
+    <div id="dex-systems" hidden>
+      <div class="sortbar">
+        <span id="dex-scount"></span>
+        <div class="speeds" role="group" aria-label="並べ方">
+          <button type="button" data-dex-ssort="rarity" aria-pressed="true">希少度順</button>
+          <button type="button" data-dex-ssort="new" aria-pressed="false">新しい順</button>
+        </div>
+      </div>
+      <div id="dex-slist" class="planets"></div>
+    </div>
+  </section>
+
+  <div id="intro" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="intro-title">
+    <div class="modal-box intro-box">
+      <p id="intro-step" class="note"></p>
+      <h3 id="intro-title"></h3>
+      <div id="intro-art" class="intro-art"></div>
+      <div id="intro-body" class="intro-body"></div>
+      <div id="intro-dots" class="dots" aria-hidden="true"></div>
+      <div class="row">
+        <button id="intro-prev" type="button">戻る</button>
+        <button id="intro-next" type="button" class="primary">次へ</button>
+      </div>
+      <button id="intro-skip" type="button" class="close-details">スキップ</button>
+    </div>
+  </div>
+
+  <div id="share-dialog" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <div class="modal-box">
+      <h3 id="share-title">共有する</h3>
+      <canvas id="share-canvas" class="share-canvas" width="1200" height="630" aria-label="共有する画像のプレビュー"></canvas>
+      <label class="share-label">投稿する文（編集できます）
+        <textarea id="share-text" rows="4"></textarea>
+      </label>
+      <p id="share-note" class="note"></p>
+      <div class="row">
+        <button id="share-x" type="button" class="primary">X で投稿</button>
+        <button id="share-native" type="button" hidden>ほかのアプリで共有</button>
+      </div>
+      <div class="row">
+        <button id="share-save" type="button">画像を保存</button>
+        <button id="share-copy" type="button">文とリンクをコピー</button>
+        <button id="share-close" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
+  <footer class="foot">
+    <p>「惑星系創造」は、惑星のでき方をやさしく近似した<strong>簡易モデル</strong>で遊ぶゲームです。実際の惑星系のでき方を、正確に再現・予測するものではありません。</p>
+    <p>図鑑のデータは、あなたのブラウザの中にだけ保存されます。サーバーには送りません。ブラウザのデータを消すと、図鑑も消えます。</p>
+    <p class="foot-version">計算のバージョン: <span id="foot-version"></span></p>
+  </footer>
+</main>
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
