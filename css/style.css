@@ -253,3 +253,5 @@ button.big { min-height: 48px; min-width: 120px; font-size: 1.05rem; }
 .disk-preview .hint { text-align: center; }
 
 .roll-note { margin: 8px 0 0; min-height: 1.4em; }
+
+.share-hint { margin: 8px 0 0; padding: 8px 12px; background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 0.9rem; }

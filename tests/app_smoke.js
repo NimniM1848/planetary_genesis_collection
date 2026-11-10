@@ -372,6 +372,7 @@ await test('共有: 結果から共有ダイアログが開き、画像が描か
   const text = $('share-text').value;
   assert.ok(text.includes('#惑星系創造') && text.includes('希少度') && text.includes('シード'), text);
   assert.ok($('share-note').textContent.includes('リンクは付けず'));
+  assert.ok($('share-note').textContent.includes('画像を保存') && $('share-note').textContent.includes('添付'), '画像を添付する案内が出る');
   const o = opened.length;
   $('share-x').click();
   assert.equal(opened.length, o + 1);
@@ -380,10 +381,52 @@ await test('共有: 結果から共有ダイアログが開き、画像が描か
   $('share-close').click();
   assert.equal($('share-dialog').hidden, true);
 });
+await test('共有の画像: 普通の画像としても表示され（長押し・右クリックで保存できる）、保存先を選べる環境ではその画面を開き、使えない環境ではダウンロードにする', async () => {
+  $('btn-share-system').click();
+  assert.ok(String($('share-img').src).startsWith('data:image/png'), '画像として表示される');
+  assert.equal($('share-img').hidden, false);
+  assert.equal($('share-canvas').hidden, true, '描画用の canvas は隠す');
+  // 保存先を選べる環境（Chrome / Edge）
+  const written = []; let asked = null;
+  globalThis.showSaveFilePicker = async (opts) => { asked = opts; return { createWritable: async () => ({ write: async (b) => { written.push(b); }, close: async () => {} }) }; };
+  $('share-save').click();
+  await sleep(30);
+  assert.ok(asked && asked.suggestedName.endsWith('.png') && asked.types[0].accept['image/png'], '保存の画面に、名前と種類を渡す');
+  assert.equal(written.length, 1, '選んだ場所に、画像が書かれる');
+  assert.ok($('toast').textContent.includes('保存しました'));
+  // 保存の画面を閉じたら（キャンセル）、何もしない（ダウンロードもしない）
+  let downloads = 0;
+  const origCreate = globalThis.document.createElement;
+  globalThis.URL.createObjectURL = () => 'blob:test'; globalThis.URL.revokeObjectURL = () => {};
+  globalThis.document.createElement = (tag) => { const e = origCreate(tag); if (tag === 'a') e.click = () => { downloads++; }; return e; };
+  globalThis.showSaveFilePicker = async () => { const e = new Error('cancel'); e.name = 'AbortError'; throw e; };
+  $('share-save').click(); await sleep(30);
+  assert.equal(downloads, 0, 'キャンセルでは、ダウンロードしない');
+  // 使えない・失敗する環境は、ダウンロードにする
+  globalThis.showSaveFilePicker = async () => { const e = new Error('denied'); e.name = 'SecurityError'; throw e; };
+  $('share-save').click(); await sleep(30);
+  assert.equal(downloads, 1, '失敗したら、ダウンロードにする');
+  delete globalThis.showSaveFilePicker;
+  $('share-save').click(); await sleep(30);
+  assert.equal(downloads, 2, '保存の画面が無い環境（Safari・Firefox・スマホ）は、ダウンロード');
+  globalThis.document.createElement = origCreate;
+  $('share-close').click();
+});
+await test('共有の画像の保存のしかた: パソコンでは右クリック、スマホ（指で操作する画面）では長押しの案内が出る', async () => {
+  $('btn-share-system').click();
+  assert.ok($('share-hint').textContent.includes('右クリック') && !$('share-hint').textContent.includes('長押し'), $('share-hint').textContent);
+  $('share-close').click();
+  globalThis.matchMedia = (q) => ({ matches: q === '(pointer: coarse)' });
+  $('btn-share-system').click();
+  assert.ok($('share-hint').textContent.includes('長押し') && $('share-hint').textContent.includes('写真に追加') && !$('share-hint').textContent.includes('右クリック'), $('share-hint').textContent);
+  $('share-close').click();
+  delete globalThis.matchMedia;
+});
 await test('共有: 公開アドレスなら、同じ惑星系を再現するリンクが付く。惑星の共有もできる', async () => {
   Object.assign(globalThis.location, { protocol: 'https:', hostname: 'example.com', origin: 'https://example.com' });
   $('btn-share-system').click();
   assert.ok(!$('share-text').value.includes('シード'));
+  assert.ok($('share-note').textContent.includes('同じ条件の惑星系を再現') && $('share-note').textContent.includes('共通の画像'), 'カードの画像は共通であることを伝える');
   const url = decodeURIComponent(opened.length ? '' : '');
   $('share-x').click();
   assert.ok(opened.at(-1).includes('&url=' + encodeURIComponent('https://example.com/planet_create/#s=')), opened.at(-1));

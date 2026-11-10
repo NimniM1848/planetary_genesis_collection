@@ -32,6 +32,8 @@ function makeEl(id) {
     closest() { return { firstChild: { textContent: id } }; },
     getBoundingClientRect() { return { left: 0, top: 0, width: 400, height: 400 }; },
     getContext() { return ctx; },
+    toDataURL() { return 'data:image/png;base64,AAAA'; },
+    toBlob(cb) { cb({ size: 4, type: 'image/png' }); },
     click() { for (const f of this.listeners.click ?? []) f({}); },
   };
   return el;
