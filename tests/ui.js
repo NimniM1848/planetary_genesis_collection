@@ -428,6 +428,20 @@ test('タイトルは「惑星系創造」、副題は「〜創って、見守�
   assert.ok(!html.includes('見届けよう'), '古い副題が残っている');
   assert.ok(html.includes('content="〜創って、見守って、集める〜"'), '共有されたときの説明（og:description）も同じ副題');
 });
+test('紹介カード: 公開アドレスの絶対アドレスで、og:image などが入り、画像ファイルが存在する（X に貼ったときの画像つきカード）', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const URL_ = 'https://nimnim1848.github.io/planetary_genesis_collection/';
+  assert.ok(html.includes(`<meta property="og:url" content="${URL_}">`));
+  assert.ok(html.includes(`<link rel="canonical" href="${URL_}">`));
+  assert.ok(html.includes(`<meta property="og:image" content="${URL_}og-image.png">`));
+  assert.ok(html.includes(`<meta name="twitter:image" content="${URL_}og-image.png">`));
+  assert.ok(html.includes('name="twitter:card" content="summary_large_image"') && !html.includes('twitter:card" content="summary"'));
+  assert.ok(html.includes('og:image:width" content="1200"') && html.includes('og:image:height" content="630"'));
+  assert.ok(html.indexOf('og:image') < html.indexOf('</head>'), 'head の中にある');
+  const b = readFileSync(new URL('../og-image.png', import.meta.url));
+  assert.equal(b.readUInt32BE(16), 1200); assert.equal(b.readUInt32BE(20), 630);
+  assert.ok(b.length < 5 * 1024 * 1024, 'X の画像の上限（5MB）以内');
+});
 test('アイコン: ヘッダーの参照先がすべて存在し、PNG は正しい大きさ、マニフェストの内容と一致する', () => {
   const root = new URL('../', import.meta.url);
   const html = readFileSync(new URL('index.html', root), 'utf8');
