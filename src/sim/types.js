@@ -7,9 +7,9 @@
  * @typedef {{ a?: number, mass?: number }} SeedSpec  未指定の項目は seed から乱数で決める
  * @typedef {{ seed: number, modelVersion: string, star: Star, disk: DiskParams, seeds: SeedSpec[], nRandomSeeds: number }} SimInput
  * @typedef {{ metal: number, rock: number, ice: number, gas: number }} Composition  [M⊕]
- * @typedef {{ id: number, a: number, e: number, mass: Composition }} Planet
+ * @typedef {{ id: number, a: number, e: number, mass: Composition, moons?: { mass: number }[] }} Planet  moons = 衛星（質量は、惑星の mass に含まれる）
  * @typedef {{ t: number, planets: Planet[], disk: { gas: Float32Array, solid: Float32Array } }} Snapshot
- * @typedef {{ t: number, kind: 'merge'|'scatter'|'eject'|'gasRunaway'|'dispersal'|'innerEdge', ids: number[], data?: Record<string, number> }} SimEvent
+ * @typedef {{ t: number, kind: 'merge'|'graze'|'scatter'|'eject'|'trap'|'gasRunaway'|'dispersal'|'innerEdge', ids: number[], data?: Record<string, number> }} SimEvent
  * @typedef {{ input: SimInput, snapshots: Snapshot[], events: SimEvent[], final: Planet[], ledger: any, warnings: string[], stats: any }} SimResult
  */
 export {};

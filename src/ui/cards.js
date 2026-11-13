@@ -39,6 +39,10 @@ export function planetCardNodes(p, name, star) {
   row('恒星からの距離', fmtDist(p.a));
   row('1周にかかる時間', fmtPeriod(d.period));
   row('軌道の形（離心率）', fmtEcc(p.e));
+  if (p.moons?.length) {
+    const mm = p.moons.reduce((s, m) => s + m.mass, 0);
+    row('衛星', `${p.moons.length} 個（合計 ${fmtMass(mm)}）`);
+  }
   nodes.push(dl);
   const total = d.mass;
   const bar = document.createElement('div');

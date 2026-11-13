@@ -2,16 +2,19 @@
 import assert from 'node:assert/strict';
 import { createRng } from '../src/sim/rng.js';
 import { baselineInput, DEFAULT_PARAMS as P0, MODEL_VERSION } from '../src/sim/params.js';
-const P = { ...P0, seedModel: 'random' }; // 仕様書 §2 の計算例の検査は、従来の方式（個数を指定して乱数で置く）で行う。新しい方式は別の節で検査する
+const P = { ...P0, seedModel: 'random', pebbleFrac: 0 }; // 仕様書 §1・§2 の計算例の検査は、従来の方式（個数を指定して乱数で置く・小石の流入なし）で行う。新しい方式は別の節で検査する
 import { createDisk, snowline, gasSurfaceDensity, solidSurfaceDensity0, totalRemaining } from '../src/sim/disk.js';
 import { isolationMass, hillRadius } from '../src/sim/accretion.js';
 import { generateSeeds, planSeeds, seedCount } from '../src/sim/seeds.js';
+import { snapToEdge, EDGE_TOL, migrationDtLimit, trapFactor, trapMassWeight } from '../src/sim/migration.js';
+import { OCEAN_TEQ } from '../src/sim/physics.js';
 import { equilibriumTemperature, orbitalPeriod, planetRadius, planetDensity, classify, describePlanet } from '../src/sim/physics.js';
 import { runSimulation, checkInvariants } from '../src/sim/sim.js';
 import { canHoldAtmosphere, khTimescale, gapSuppression, gapFactorsFromOthers, accreteGas } from '../src/sim/gas.js';
 import { computeWeights } from '../src/sim/accretion.js';
 import { typeITimescale, typeIITimescale, migrationRate, migrate } from '../src/sim/migration.js';
-import { mutualHillRadius, hillSeparation, instabilityTime, mergeProbability, gasClearingFactor, mergePlanets, processCollisions, safronovNumber, mergeFraction, scatterSigma, kickEccentricity } from '../src/sim/collision.js';
+import { mutualHillRadius, hillSeparation, instabilityTime, mergeProbability, gasClearingFactor, mergePlanets, processCollisions, safronovNumber, mergeFraction, scatterSigma, kickEccentricity, impactOutcome } from '../src/sim/collision.js';
+import { randomInput } from '../src/ui/presets.js';
 import { hashResult } from '../src/sim/hash.js';
 import { MSUN_IN_MEARTH } from '../src/sim/constants.js';
 
@@ -147,7 +150,7 @@ test('特徴タグ: 溶岩惑星・ホットジュピター', () => {
 
 console.log('gas (§3)');
 const star1 = { mass: 1, luminosity: 1, Z: 1 };
-const PS = { ...P, mGap: 100, fMig: 0.1, tauII0: 1e6 }; // 仕様書の計算例は M_gap = 100 M⊕ 前提
+const PS = { ...P, mGap: 100, fMig: 0.1, tauII0: 1e6, gapExp: 2, snowTrap: false, chainDelta: 0 }; // 仕様書の計算例は、M_gap = 100 M⊕・Type I/II の混ぜ方が 2 乗・トラップと連なりなし（v1 の式）が前提
 const mk = (id, a, m, gas = 0) => ({ id, a, e: 0, mass: { metal: 0, rock: m - gas, ice: 0, gas } });
 test('大気の足切り: 月質量は 1 AU で保持でき、0.001 M⊕ は保持できない', () => {
   assert.ok(canHoldAtmosphere(mk(1, 1, 0.0123), star1));
@@ -275,7 +278,7 @@ test('processCollisions: ごく近いペアは寿命後ほぼ確実に合体し�
   assert.equal(r.planets.length, 2);
   assert.equal(r.events.length, 1);
   assert.equal(r.events[0].kind, 'merge');
-  near(r.planets.reduce((s, p) => s + p.mass.rock, 0), 3, 1e-12);
+  near(r.planets.reduce((s, p) => s + p.mass.rock, 0) + d.lost.ejected, 3, 1e-12); // 衝突で飛び散った分（v2）は、系外へ出た質量に入る
 });
 test('離心率はガス円盤が残る間だけ減衰する', () => {
   const d = createDisk(star1, base.disk, P);
@@ -357,7 +360,7 @@ test('種の数: 基準で 7 個。固体が多い（金属量・円盤の質量
   assert.equal(n(), 7);
   assert.ok(n((i) => { i.star.Z = 0.5; }) < n() && n() < n((i) => { i.star.Z = 2; }), '金属量が高いほど多い');
   assert.ok(n((i) => { i.disk.mass = 0.01; }) < n() && n() < n((i) => { i.disk.mass = 0.08; }), '円盤が重いほど多い');
-  assert.ok(n((i) => { i.disk.rOut = 15; }) < n() && n() < n((i) => { i.disk.rOut = 80; }), '広い円盤ほど多い');
+  assert.ok(n((i) => { i.disk.rOut = 15; }) < n() && n() <= n((i) => { i.disk.rOut = 80; }) && n((i) => { i.disk.rOut = 15; }) < n((i) => { i.disk.rOut = 80; }), '広い円盤ほど多い');
   assert.equal(n((i) => { i.disk.mass = 0.005; i.star.Z = 0.2; }), 3, '下限');
   assert.equal(n((i) => { i.disk.mass = 0.5; i.star.Z = 3; i.disk.rOut = 100; }), 16, '上限');
 });
@@ -400,6 +403,222 @@ test('条件が結果に効く: 金属量が高い・円盤が重いほど、種
   const low = giants((i) => { i.star.Z = 0.5; }), mid = giants(() => {}), high = giants((i) => { i.star.Z = 2; });
   assert.ok(low.seeds < mid.seeds && mid.seeds < high.seeds, `種の数: ${low.seeds} ${mid.seeds} ${high.seeds}`);
   assert.ok(low.g <= mid.g && mid.g < high.g, `巨大ガス惑星のある系: ${low.g} ${mid.g} ${high.g}`);
+});
+
+console.log('v2: 小石の流入（内側の固体を増やす）');
+const diskP = (over, mut) => { const i = baselineInput(1); mut?.(i); return { i, d: createDisk(i.star, i.disk, { ...P0, ...over }) }; };
+const solidIn = (d, rMax) => { let s = 0; for (let j = 0; j < d.N; j++) if (d.edges[j + 1] <= rMax) s += d.solid0[j]; return s; };
+test('流入なし(pebbleFrac=0)は、仕様書 §1 の固体総量 約 94 M⊕ のまま。流入ありは、スノーライン内側だけが増え、外側と氷は変わらない', () => {
+  const off = diskP({ pebbleFrac: 0 }).d, on = diskP({}).d;
+  nearRel(off.solid0.reduce((s, x) => s + x, 0), 94, 0.02);
+  for (let j = 0; j < off.N; j++) {
+    if (off.edges[j] >= off.snow) { assert.equal(on.solid0[j], off.solid0[j], `外側のセル ${j} は変わらない`); }
+    assert.equal(on.ice[j], off.ice[j], '氷は変わらない（スノーライン内側に氷はない）');
+    assert.equal(on.gas[j], off.gas[j], 'ガスは変わらない');
+    assert.ok(on.solid0[j] >= off.solid0[j] - 1e-15);
+  }
+  assert.ok(solidIn(on, 1) > 4 * solidIn(off, 1), `1 AU 未満の固体が、数倍に増える: ${solidIn(on, 1)} / ${solidIn(off, 1)}`);
+});
+test('流入の量 = スノーライン外側の固体 × 岩石・金属の割合 × pebbleFrac。金属量に比例し、質量収支（初期の総量）に含まれる', () => {
+  const off = diskP({ pebbleFrac: 0 }).d, on = diskP({}).d;
+  let outer = 0; for (let j = 0; j < off.N; j++) outer += off.solid0[j] * (off.edges[j] >= off.snow ? 1 : 0);
+  const added = on.solid0.reduce((s, x) => s + x, 0) - off.solid0.reduce((s, x) => s + x, 0);
+  nearRel(added, P0.pebbleFrac * (0.0045 / 0.01) * outer, 0.03, '流入の量');
+  assert.ok(Math.abs(on.mInitial - (off.mInitial + added)) / on.mInitial < 1e-12, '初期の総量に含まれる（質量保存の検査が、そのまま成り立つ）');
+  const z2 = diskP({}, (i) => { i.star.Z = 2; }).d, z2off = diskP({ pebbleFrac: 0 }, (i) => { i.star.Z = 2; }).d;
+  nearRel((z2.solid0.reduce((s, x) => s + x, 0) - z2off.solid0.reduce((s, x) => s + x, 0)) / added, 2, 0.02, '金属量 2 倍で、流入も 2 倍');
+  // 内側の表面密度 ∝ r^-κ（足した分だけを取り出して、2 点の比を見る）
+  const dens = (d, a) => { const j = d.center.findIndex((c) => c > a); return d.solid0[j] / d.area[j]; };
+  const add = (a) => dens(on, a) - dens(off, a);
+  nearRel(add(0.1) / add(0.4), Math.pow(4, 2), 0.06, 'κ = 2 のとき、0.1 AU は 0.4 AU の 16 倍');
+});
+test('流入ありでも、質量保存・非負性が保たれ、金属量が高い・円盤が重いほど、内側の固体が多い', () => {
+  for (const seed of [1, 2, 3]) {
+    const input = baselineInput(seed);
+    const r = runSimulation(input);
+    assert.ok(r.ledger.relError <= 1e-9);
+  }
+  const lo = diskP({}, (i) => { i.star.Z = 0.5; }).d, hi = diskP({}, (i) => { i.star.Z = 2; }).d;
+  assert.ok(solidIn(lo, 1) < solidIn(diskP({}).d, 1) && solidIn(diskP({}).d, 1) < solidIn(hi, 1));
+});
+
+console.log('v2: 海洋惑星の分類');
+test('氷を多く含む惑星は、平衡温度が低ければ氷惑星、氷が解ける温度（273 K 以上）なら海洋惑星。それ以外の分類は変わらない', () => {
+  const ice = { metal: 0, rock: 2, ice: 3, gas: 0 };
+  assert.equal(classify(ice), '氷惑星', '温度を渡さなければ、低温として扱う');
+  assert.equal(classify(ice, OCEAN_TEQ - 1), '氷惑星');
+  assert.equal(classify(ice, OCEAN_TEQ), '海洋惑星');
+  assert.equal(classify(ice, 900), '海洋惑星');
+  assert.equal(classify({ metal: 0, rock: 5, ice: 0, gas: 0 }, 900), 'スーパーアース', '氷の少ない惑星は、温度に関わらず変わらない');
+  assert.equal(classify({ metal: 0, rock: 6, ice: 9, gas: 0 }, 900), '巨大氷惑星', '巨大氷惑星は、温度に関わらず変わらない');
+  assert.equal(classify({ metal: 0, rock: 20, ice: 0, gas: 280 }, 900), '巨大ガス惑星');
+});
+test('describePlanet: 同じ氷の多い惑星が、遠くでは氷惑星（氷主体）、太陽に近いと海洋惑星（氷主体のタグは付けない）になる', () => {
+  const star = { mass: 1, luminosity: 1, Z: 1 };
+  const mk = (a) => ({ id: 1, a, e: 0, mass: { metal: 0, rock: 2, ice: 3, gas: 0 } });
+  const far = describePlanet(mk(5), star), near = describePlanet(mk(0.5), star);
+  assert.equal(far.class, '氷惑星'); assert.ok(far.tags.includes('氷主体') && far.tags.includes('低温'));
+  assert.equal(near.class, '海洋惑星'); assert.ok(!near.tags.includes('氷主体'));
+  assert.ok(near.teq >= OCEAN_TEQ && far.teq < OCEAN_TEQ);
+});
+
+console.log('v2: 内縁との比較（1 ulp のずれで、結果が変わらないように）');
+test('内縁にごく近い軌道は、内縁ちょうどにそろえる。内縁に居る惑星は、刻みの上限に影響しない', () => {
+  assert.equal(snapToEdge(0.05 * (1 + 1e-12), 0.05), 0.05);
+  assert.equal(snapToEdge(0.05 * (1 - 1e-12), 0.05), 0.05);
+  assert.equal(snapToEdge(0.05 * (1 + 1e-6), 0.05), 0.05 * (1 + 1e-6), '十分に離れていれば、そのまま');
+  assert.ok(EDGE_TOL > 1e-12 && EDGE_TOL < 1e-6);
+  const d = createDisk(baselineInput(1).star, baselineInput(1).disk, P0);
+  const star = baselineInput(1).star;
+  const atEdge = { id: 1, a: 0.05, e: 0, mass: { metal: 0, rock: 5, ice: 0, gas: 0 } };
+  const ulp = { ...atEdge, a: 0.05 * (1 + 1e-15) };
+  const lim = (p) => migrationDtLimit([p], d, P0, star, 0);
+  assert.equal(lim(atEdge), Infinity);
+  assert.equal(lim(ulp), Infinity, '内縁から 1 ulp 離れた惑星も、内縁にいるものとして扱う（刻みの上限に影響しない）');
+  assert.ok(Number.isFinite(lim({ ...atEdge, a: 0.5 })), '離れていれば、上限が決まる');
+});
+
+console.log('v2: スーパーアース（現実には意外と多い）');
+test('ランダム設定の系の約 2〜4 割に、スーパーアースがある。巨大ガス惑星のある系も、減らさない', () => {
+  let se = 0, gg = 0;
+  const N = 80;
+  for (let s = 1; s <= N; s++) {
+    const input = randomInput(70000 + s);
+    const r = runSimulation(input);
+    const cls = r.final.map((p) => describePlanet(p, input.star).class);
+    if (cls.includes('スーパーアース')) se++;
+    if (cls.includes('巨大ガス惑星')) gg++;
+  }
+  console.log(`       (${N} 系: スーパーアースのある系 ${Math.round((100 * se) / N)}% / 巨大ガス惑星のある系 ${Math.round((100 * gg) / N)}%)`);
+  assert.ok(se / N >= 0.2 && se / N <= 0.45, `スーパーアースのある系: ${se}/${N}`);
+  assert.ok(gg / N >= 0.15, `巨大ガス惑星のある系が少なすぎる: ${gg}/${N}`);
+});
+
+console.log('v2: 軌道トラップと外向き移動・内側の連なり');
+const stdDisk = () => createDisk(star1, base.disk, P0);
+test('トラップ係数: 中心で 0（止まる）、内側で負（外向き）、外側で内向き、範囲の外と質量の範囲の外は 1。トラップを切れば 1', () => {
+  const snow = 2.7, m = 10;
+  near(trapFactor(snow, m, snow, P0), 0, 0.01, '中心');
+  assert.ok(trapFactor(snow * 0.7, m, snow, P0) < -0.2, '内側は外向き');
+  assert.ok(trapFactor(snow * 1.5, m, snow, P0) > 0.5 && trapFactor(snow * 1.5, m, snow, P0) < 1, '外側は、弱まった内向き');
+  near(trapFactor(snow * 8, m, snow, P0), 1, 0.01, '遠い外側はふつうの内向き');
+  near(trapFactor(snow * 0.1, m, snow, P0), 1, 0.01, '遠い内側もふつうの内向き');
+  near(trapFactor(snow, 300, snow, P0), 1, 0.01, '巨大惑星（質量の範囲の外）は影響を受けない');
+  assert.ok(Math.abs(trapFactor(snow, 0.1, snow, P0) - 1) < 1e-3, '軽い惑星は影響を受けない');
+  assert.equal(trapFactor(snow, m, snow, { ...P0, snowTrap: false }), 1);
+  assert.ok(trapMassWeight(10, P0) > 0.99 && trapMassWeight(0.5, P0) < 0.01 && trapMassWeight(200, P0) < 0.01, '質量の窓');
+  assert.ok(trapMassWeight(2, P0) > 0.3 && trapMassWeight(2, P0) < 0.7, '窓の端はなめらか');
+});
+test('移動の向き: 10 M⊕ の惑星は、トラップの内側（スノーライン × 0.7）で外向き、外側で内向き。ギャップを開く前に Type II は効かない', () => {
+  const d = stdDisk();
+  const rate = (a, m) => migrationRate(mk(1, a, m), [mk(1, a, m)], d, P0, MSUN_IN_MEARTH);
+  assert.ok(rate(d.snow * 0.7, 10) < 0, '外向き');
+  assert.ok(rate(d.snow * 3, 10) > 0, '内向き');
+  const s10 = 10 ** P0.gapExp / (10 ** P0.gapExp + P0.mGap ** P0.gapExp);
+  assert.ok(s10 < 0.05, `10 M⊕ の Type II の割合は小さい: ${s10}`);
+  assert.ok(rate(d.snow * 3, 300) > 0, '巨大惑星は、ふつうに内向き');
+});
+test('内側の連なり: 内向きに動く惑星は、内側の隣の手前（相互ヒル半径の 7 倍）で止まり、追い越さない。外向き・巨大惑星・内縁は、影響を受けない', () => {
+  const d = stdDisk();
+  const dtBig = 2e6;
+  const inner = mk(1, d.rIn, 5), outer = mk(2, 2.0, 5);
+  migrate([inner, outer], d, { ...P0, snowTrap: false }, star1, 0, dtBig);
+  assert.equal(inner.a, d.rIn, '内縁の惑星はそのまま');
+  const c = P0.chainDelta * Math.cbrt(10 / (3 * MSUN_IN_MEARTH));
+  const aMin = (d.rIn * (1 + c / 2)) / (1 - c / 2);
+  assert.ok(outer.a >= aMin * (1 - 1e-9) && outer.a < 2.0, `連なりの位置で止まる: ${outer.a} / 下限 ${aMin}`);
+  assert.ok(outer.a > inner.a, '追い越さない');
+  // 巨大惑星は、連なりに阻まれない
+  const giant = mk(3, 2.0, 300, 270);
+  migrate([mk(1, d.rIn, 5), giant], d, P0, star1, 0, dtBig);
+  assert.ok(giant.a < 0.3, `巨大惑星は、内側へ入っていく: ${giant.a}`);
+  // 外向きの移動（トラップの内側）は、連なりに影響されない
+  const a0 = d.snow * 0.7;
+  const out = mk(4, a0, 10);
+  migrate([mk(5, a0 * 0.9, 1), out], d, P0, star1, 0, 1e4);
+  assert.ok(out.a > a0, '外向きに動く');
+});
+test('トラップに引き寄せられる: 10 M⊕ の惑星を 1.9 AU に置くと、初めは外向きに動く。3.5 AU から来ると、スノーライン付近で止まり、trap のできごとが記録される', () => {
+  const run = (a0) => runSimulation({ ...baselineInput(1), seeds: [{ a: a0, mass: 10 }], nRandomSeeds: 0 }, { seedModel: 'random' });
+  const inside = run(1.9);
+  assert.ok(inside.snapshots[40].planets[0].a > 1.9, `外向き: ${inside.snapshots[40].planets[0].a}`);
+  const free = runSimulation({ ...baselineInput(1), seeds: [{ a: 1.9, mass: 10 }], nRandomSeeds: 0 }, { seedModel: 'random', snowTrap: false });
+  assert.ok(free.snapshots[40].planets[0].a < 1.9, 'トラップがなければ、内向き');
+  const ev = run(3.5).events.find((e) => e.kind === 'trap');
+  assert.ok(ev, 'trap のできごとが記録される');
+  assert.ok(Math.abs(Math.log(ev.data.a / 2.7)) < P0.trapCatchLn + 1e-9 && ev.data.from === 3.5);
+  assert.equal(run(3.5).events.filter((e) => e.kind === 'trap').length, 1, '初回だけ');
+});
+
+console.log('v2: 衝突の細かさ（部分合体・質量損失・衛星）');
+const stubRng = (...vals) => { let i = 0; return { next: () => vals[Math.min(i++, vals.length - 1)], rayleigh: () => 0.02, getState: () => 0, setState: () => {} }; };
+const rockPl = (id, a, m) => ({ id, a, e: 0, mass: { metal: m * 0.3, rock: m * 0.7, ice: 0, gas: 0 } });
+test('衝突の結果: 真正面に近い → 完全合体、斜め → 破片（質量損失と衛星）、かすめる（質量比が小さいとき）→ 合体しない。ガスの多い惑星は常に完全合体', () => {
+  const big = rockPl(1, 1, 1), small = rockPl(2, 1.01, 0.2);
+  assert.equal(impactOutcome(big, small, stubRng(0.04), P0).kind, 'perfect'); // b = 0.2
+  const partial = impactOutcome(big, small, stubRng(0.49), P0); // b = 0.7
+  assert.equal(partial.kind, 'partial');
+  nearRel(partial.debris, P0.impactLossCoef * 0.2 * ((0.7 - 0.4) / 0.6), 1e-9, '破片の量');
+  nearRel(partial.lost, partial.debris * P0.impactLossFrac, 1e-9);
+  nearRel(partial.moon, partial.debris * P0.moonFrac, 1e-9);
+  assert.equal(impactOutcome(big, small, stubRng(0.9), P0).kind, 'graze'); // b ≈ 0.95、質量比 0.2 < 0.5
+  assert.equal(impactOutcome(big, rockPl(3, 1.01, 0.9), stubRng(0.9), P0).kind, 'partial', '質量比が大きければ、かすめずに合体する');
+  const gasy = { id: 4, a: 1, e: 0, mass: { metal: 0, rock: 1, ice: 0, gas: 9 } };
+  assert.equal(impactOutcome(gasy, small, stubRng(0.9), P0).kind, 'perfect', 'ガスの多い惑星は完全合体');
+  assert.equal(impactOutcome(rockPl(1, 1, 0.01), rockPl(2, 1, 0.004), stubRng(0.5), P0).moon, 0, '軽すぎれば衛星はできない');
+  assert.equal(impactOutcome(big, rockPl(5, 1.01, 0.001), stubRng(0.49), P0).moon, 0, '質量比が小さすぎれば、衛星はできない');
+});
+test('processCollisions: 斜めの衝突は、質量を失い（岩石から先）、衛星ができる。質量収支が合い、かすめる衝突は互いに生き残る', () => {
+  const d = createDisk(star1, base.disk, P0);
+  // 合体の判定に通る（rng 1 → 0.0）、散乱でなく合体（0.0）、衝突の角度 b = 0.7（0.49）
+  const ps = [rockPl(1, 1.0, 1), rockPl(2, 1.01, 0.2)];
+  const before = 1.2;
+  const r = processCollisions(ps, d, P0, star1, 4e6, 1e5, stubRng(0, 0, 0.49));
+  assert.equal(r.planets.length, 1);
+  const ev = r.events[0];
+  assert.equal(ev.kind, 'merge');
+  assert.equal(ev.data.outcome, 'partial');
+  const merged = r.planets[0];
+  assert.equal(merged.id, 1);
+  assert.equal(merged.moons.length, 1);
+  nearRel(merged.moons[0].mass, ev.data.moonMass, 1e-12);
+  const total = merged.mass.metal + merged.mass.rock + merged.mass.ice + merged.mass.gas;
+  near(total + d.lost.ejected, before, 1e-12, '質量収支（飛び散った分は、系外へ出た質量）');
+  near(d.lost.ejected, ev.data.lost, 1e-12);
+  // 小さいほうの岩石から先に失われるので、金属の割合が増える
+  assert.ok(merged.mass.metal / total > 0.3 + 1e-6, `金属の割合が増える: ${merged.mass.metal / total}`);
+  assert.ok(merged.mass.rock >= 0 && merged.mass.metal >= 0);
+  // かすめる衝突（b ≈ 0.95）: 合体せず、離心率だけ蹴られる
+  const d2 = createDisk(star1, base.disk, P0);
+  const r2 = processCollisions([rockPl(1, 1.0, 1), rockPl(2, 1.01, 0.2)], d2, P0, star1, 4e6, 1e5, stubRng(0, 0, 0.9, 0.3, 0.3));
+  assert.equal(r2.planets.length, 2);
+  assert.equal(r2.events[0].kind, 'graze');
+  assert.equal(d2.lost.ejected, 0);
+  assert.ok(r2.planets.every((p) => p.e > 0));
+});
+test('衛星: 重いほうの衛星だけが引き継がれ、スナップショットと結果にはコピーが入る。衛星のある惑星には「衛星あり」のタグが付く', () => {
+  const d = createDisk(star1, base.disk, P0);
+  const h = rockPl(1, 1.0, 1); h.moons = [{ mass: 0.01 }];
+  const s = rockPl(2, 1.01, 0.5); s.moons = [{ mass: 0.005 }, { mass: 0.002 }];
+  const m = mergePlanets(h, s, createRng(1), P0);
+  assert.deepEqual(m.moons, [{ mass: 0.01 }]);
+  assert.notStrictEqual(m.moons[0], h.moons[0], '共有されない（コピー）');
+  assert.ok(describePlanet(h, star1).tags.includes('衛星あり'));
+  assert.ok(!describePlanet(rockPl(3, 1, 1), star1).tags.includes('衛星あり'));
+  const res = runSimulation(baselineInput(3));
+  for (const sn of res.snapshots) for (const p of sn.planets) if (p.moons) assert.ok(p.moons.length <= P0.moonMaxCount);
+});
+test('v2 全体: 質量保存が保たれ（衝突で飛び散った分を含む）、衛星のある系が現実的な割合（1〜4 割）で、衛星は惑星の 1% ほどの重さ', () => {
+  let moonSys = 0, N = 60; const ratios = [];
+  for (let s = 1; s <= N; s++) {
+    const r = runSimulation(randomInput(80000 + s));
+    assert.ok(r.ledger.relError <= 1e-9, `seed ${s}`);
+    let has = false;
+    for (const p of r.final) if (p.moons?.length) { has = true; const tot = p.mass.metal + p.mass.rock + p.mass.ice + p.mass.gas; for (const m of p.moons) { ratios.push(m.mass / tot); assert.ok(m.mass < tot); } }
+    if (has) moonSys++;
+  }
+  console.log(`       (${N} 系: 衛星のある系 ${Math.round((100 * moonSys) / N)}%、衛星/惑星の質量比 中央値 ${(100 * ratios.sort((a, b) => a - b)[Math.floor(ratios.length / 2)] || 0).toFixed(2)}%)`);
+  assert.ok(moonSys / N >= 0.08 && moonSys / N <= 0.4, `衛星のある系: ${moonSys}/${N}`);
 });
 
 console.log('sim (§6 必須テスト)');

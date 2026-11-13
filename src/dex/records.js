@@ -4,7 +4,7 @@ import { rarityOfPlanet, rarityOfSystem } from './rarity.js';
 import { systemId } from './store.js';
 
 const r7 = (x) => Number(x.toPrecision(7)); // 保存容量を減らすため 7 桁に丸める（表示には十分）
-const roundPlanet = (p) => ({ id: p.id, a: r7(p.a), e: r7(p.e), mass: { metal: r7(p.mass.metal), rock: r7(p.mass.rock), ice: r7(p.mass.ice), gas: r7(p.mass.gas) } });
+const roundPlanet = (p) => ({ id: p.id, a: r7(p.a), e: r7(p.e), mass: { metal: r7(p.mass.metal), rock: r7(p.mass.rock), ice: r7(p.mass.ice), gas: r7(p.mass.gas) }, ...(p.moons?.length ? { moons: p.moons.map((m) => ({ mass: r7(m.mass) })) } : {}) });
 const slimInput = (i) => ({ seed: i.seed, modelVersion: i.modelVersion, star: { ...i.star }, disk: { ...i.disk, structures: (i.disk.structures ?? []).map((s) => ({ ...s })) }, seeds: [], nRandomSeeds: i.nRandomSeeds });
 
 /** @param {import('../sim/types.js').SimResult} result */

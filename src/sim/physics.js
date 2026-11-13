@@ -45,8 +45,15 @@ export function planetDensity(m, r) {
   return (5.51 * m) / (r * r * r);
 }
 
-/** 惑星分類。上から順に評価して最初に当てはまるものを返す */
-export function classify(mass) {
+/** 氷（水）が解け始める平衡温度 [K]。氷を多く含む惑星が、これ以上の温度なら「海洋惑星」（氷惑星ではない） */
+export const OCEAN_TEQ = 273;
+
+/**
+ * 惑星分類。上から順に評価して最初に当てはまるものを返す。
+ * @param {import('./types.js').Composition} mass
+ * @param {number} [teq] 平衡温度 [K]。氷を多く含む惑星を、氷惑星と海洋惑星に分けるのに使う（省略すると、低温として扱う）
+ */
+export function classify(mass, teq = 0) {
   const m = totalMass(mass);
   const fGas = mass.gas / m;
   const fIce = mass.ice / m;
@@ -54,7 +61,7 @@ export function classify(mass) {
   if (m >= 10 && fIce >= 0.4 && fGas < 0.3) return '巨大氷惑星';
   if (fGas >= 0.01 && m >= 30) return 'ネプチューン級';
   if (fGas >= 0.01) return 'ミニネプチューン';
-  if (fIce >= 0.4) return '氷惑星';
+  if (fIce >= 0.4) return teq >= OCEAN_TEQ ? '海洋惑星' : '氷惑星';
   if (m >= 20) return '巨大岩石惑星';
   if (m >= 2) return 'スーパーアース';
   return '岩石惑星';
@@ -71,7 +78,7 @@ export function describePlanet(planet, star) {
   const density = planetDensity(m, radius);
   const teq = equilibriumTemperature(planet.a, star.luminosity, planet.e);
   const period = orbitalPeriod(planet.a, star.mass); // yr
-  const cls = classify(planet.mass);
+  const cls = classify(planet.mass, teq);
   const fIce = planet.mass.ice / m;
   const tags = [];
   const rocky = cls === '岩石惑星' || cls === 'スーパーアース' || cls === '巨大岩石惑星';
@@ -79,8 +86,9 @@ export function describePlanet(planet, star) {
   if (rocky && teq > 1500) tags.push('溶岩惑星');
   if (teq > 1000) tags.push('高温');
   if (teq < 150) tags.push('低温');
-  if (fIce >= 0.4) tags.push('氷主体');
+  if (fIce >= 0.4 && cls !== '海洋惑星') tags.push('氷主体'); // 海洋惑星は、分類の名前が、水を多く含むことを表す
   if (density < 0.5) tags.push('低密度');
   if (planet.e >= 0.3) tags.push('高離心率');
+  if (planet.moons?.length) tags.push('衛星あり');
   return { mass: m, radius, density, teq, period, class: cls, tags };
 }

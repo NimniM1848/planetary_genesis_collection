@@ -156,11 +156,11 @@ test('保存: 保存容量が足りないときは、古い惑星系を手放し
   assert.ok(huge.error.includes('保存できません'));
   assert.ok(st.hasSystem('d') && !st.hasSystem('huge'), '失敗したら、もとの状態に戻る');
 });
-test('図鑑のマス: 行 = 8 分類、列 = 8 タグ + なし。登録した惑星で埋まり、完成度が数えられる', () => {
+test('図鑑のマス: 行 = 9 分類、列 = 9 タグ + なし。登録した惑星で埋まり、完成度が数えられる', () => {
   const st = createStore(memStorage());
   const g0 = st.grid();
-  assert.equal(g0.rows.length, 8);
-  assert.equal(g0.cols.length, 9);
+  assert.equal(g0.rows.length, 9);
+  assert.equal(g0.cols.length, 10);
   assert.equal(g0.done, 0);
   assert.ok(g0.total > 20 && g0.total < 72, `出うるマス: ${g0.total}`);
   assert.ok(possibleCells().has('巨大ガス惑星|ホットジュピター'));

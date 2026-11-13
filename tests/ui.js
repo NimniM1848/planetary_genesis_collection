@@ -592,8 +592,8 @@ test('初期の円盤の図: 種ができる位置が描かれ、その位置・
   assert.notDeepEqual(plannedSeeds(cond, 1), plannedSeeds(cond, 2), 'シードが違えば、配置が変わる');
   assert.ok(plannedSeeds({ ...cond, star: { ...cond.star, Z: 2 } }, 1).length > plannedSeeds(cond, 1).length, '金属量が高いと、種が多い');
 });
-test('円盤の固体の総量: 基準で約 94 M⊕（仕様書 §1）。金属量に比例し、不正なら null', () => {
-  assert.ok(Math.abs(solidTotal(baseCond()) / 94 - 1) < 0.02);
+test('円盤の固体の総量: 基準で約 106 M⊕（仕様書 §1 の 94 M⊕ + 小石の流入）。金属量に比例し、不正なら null', () => {
+  assert.ok(Math.abs(solidTotal(baseCond()) / 106.3 - 1) < 0.02);
   assert.ok(solidTotal({ ...baseCond(), star: { ...baseCond().star, Z: 2 } }) > 1.9 * solidTotal(baseCond()));
   assert.equal(solidTotal({ star: {}, disk: {} }), null);
 });

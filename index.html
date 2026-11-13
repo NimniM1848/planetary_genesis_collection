@@ -42,6 +42,7 @@
 </script>
 <main>
   <header>
+    <button id="btn-version" type="button" class="version-btn" aria-haspopup="dialog" title="アップデート内容を見る"></button>
     <h1><img src="icon.svg" class="logo" width="44" height="44" alt="">惑星系創造</h1>
     <p class="lead">〜創って、見守って、集める〜</p>
     <nav class="tabs" aria-label="画面の切り替え">
@@ -201,6 +202,14 @@
       <div id="dex-slist" class="planets"></div>
     </div>
   </section>
+
+  <div id="changelog" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+    <div class="modal-box">
+      <h3 id="changelog-title">アップデート内容</h3>
+      <div id="changelog-body" class="changelog-body"></div>
+      <button id="changelog-close" type="button" class="close-details">閉じる</button>
+    </div>
+  </div>
 
   <div id="intro" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="intro-title">
     <div class="modal-box intro-box">

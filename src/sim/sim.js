@@ -3,6 +3,7 @@
 import { DEFAULT_PARAMS, MODEL_VERSION } from './params.js';
 import { createRng } from './rng.js';
 import { createDisk, dissipateGas, totalRemaining } from './disk.js';
+import { trapMassWeight } from './migration.js';
 import { generateSeeds } from './seeds.js';
 import { accreteSolids, computeWeights } from './accretion.js';
 import { accreteGas } from './gas.js';
@@ -13,7 +14,7 @@ import { MSUN_IN_MEARTH } from './constants.js';
 const COMPONENTS = ['metal', 'rock', 'ice', 'gas'];
 
 const planetTotal = (p) => p.mass.metal + p.mass.rock + p.mass.ice + p.mass.gas;
-const clonePlanet = (p) => ({ id: p.id, a: p.a, e: p.e, mass: { ...p.mass } });
+const clonePlanet = (p) => ({ id: p.id, a: p.a, e: p.e, mass: { ...p.mass }, ...(p.moons?.length ? { moons: p.moons.map((m) => ({ ...m })) } : {}) });
 
 /** 質量保存と非負性の検査。破れていたら例外を投げる */
 export function checkInvariants(disk, planets, params) {
@@ -90,6 +91,8 @@ export function runSimulation(input, paramsOverride = {}) {
   checkInvariants(disk, planets, params);
 
   const atEdge = new Set(); // 内縁に達した惑星（innerEdge イベントは初回のみ）
+  const startA = new Map(planets.map((p) => [p.id, p.a])); // 最初の軌道長半径（トラップに捕まったかの判定に使う）
+  const trapped = new Set(); // スノーライン付近のトラップに捕まった惑星（trap イベントは初回のみ）
   const runaway = new Set(); // ガス割合が 0.5 に達した惑星（gasRunaway イベントは初回のみ）
   const mStarEarth = input.star.mass * MSUN_IN_MEARTH;
   let t = 0;
@@ -130,6 +133,14 @@ export function runSimulation(input, paramsOverride = {}) {
     checkInvariants(disk, planets, params);
 
     for (const p of planets) {
+      // 衛星は、星に近すぎると、潮汐で失われる（質量は、惑星に残る）
+      if (p.moons?.length && p.a < params.moonMinA) delete p.moons;
+      // スノーライン付近のトラップに、動いてきて捕まった（最初の位置から 10% 以上動いて、トラップの中心に近づいた）
+      if (params.snowTrap && !trapped.has(p.id) && t <= disk.tLife && trapMassWeight(planetTotal(p), params) > 0.5
+        && Math.abs(Math.log(p.a / disk.snow)) < params.trapCatchLn && startA.has(p.id) && Math.abs(Math.log(p.a / startA.get(p.id))) > 0.1) {
+        trapped.add(p.id);
+        events.push({ t, kind: 'trap', ids: [p.id], data: { mass: planetTotal(p), a: p.a, from: startA.get(p.id) } });
+      }
       if (!atEdge.has(p.id) && p.a <= disk.rIn * (1 + 1e-9)) {
         atEdge.add(p.id);
         events.push({ t, kind: 'innerEdge', ids: [p.id], data: { mass: planetTotal(p), a: p.a } });

@@ -4,8 +4,8 @@ import { describePlanet } from '../sim/physics.js';
 import { habitableZone } from '../ui/layout.js';
 
 /** 図鑑の行（惑星分類）と列（特徴タグ）の並び順 */
-export const DEX_CLASSES = ['巨大ガス惑星', '巨大氷惑星', 'ネプチューン級', 'ミニネプチューン', '氷惑星', 'スーパーアース', '岩石惑星', '巨大岩石惑星'];
-export const DEX_TAGS = ['ホットジュピター', '溶岩惑星', '高温', '低温', '氷主体', '低密度', '高離心率', 'ハビタブルゾーン内'];
+export const DEX_CLASSES = ['巨大ガス惑星', '巨大氷惑星', 'ネプチューン級', 'ミニネプチューン', '氷惑星', '海洋惑星', 'スーパーアース', '岩石惑星', '巨大岩石惑星'];
+export const DEX_TAGS = ['ホットジュピター', '溶岩惑星', '高温', '低温', '氷主体', '低密度', '高離心率', '衛星あり', 'ハビタブルゾーン内'];
 
 /** 惑星 1 個の物理量・分類・タグ（sim のタグに、図鑑用の「ハビタブルゾーン内」を加える） */
 export function planetFeatures(planet, star) {

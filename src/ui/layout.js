@@ -89,7 +89,7 @@ export function stageOf(t, tLife, finished) {
 }
 
 /** スローにするできごと（散乱は多すぎるので除く） */
-export const SLOW_KINDS = new Set(['gasRunaway', 'merge', 'eject', 'innerEdge', 'dispersal']);
+export const SLOW_KINDS = new Set(['gasRunaway', 'merge', 'graze', 'eject', 'innerEdge', 'dispersal']);
 
 /** 時刻 t [yr] に当たるフレーム位置（スナップショット番号の実数） */
 export function frameOfTime(result, t) {

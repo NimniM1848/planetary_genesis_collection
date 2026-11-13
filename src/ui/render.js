@@ -9,6 +9,8 @@ export const MARKER_STYLE = {
   merge: { color: '255,122,217', label: '合体', legend: '惑星どうしがぶつかって一つになった' },
   eject: { color: '255,107,107', label: '放出', legend: '惑星が系の外へ弾き飛ばされた' },
   innerEdge: { color: '255,154,77', label: '内縁に到達', legend: '円盤の一番内側まで動いてきた' },
+  graze: { color: '190,170,255', label: 'かすめた', legend: '惑星どうしがかすめて、合体せずに離れた' },
+  trap: { color: '120,220,200', label: '軌道のわな', legend: 'スノーライン付近で、移動が止まった（内向きの移動が弱まる場所）' },
   scatter: { color: '154,209,255', label: '散乱', legend: '惑星どうしが近づき、重力で軌道が乱れた（ぶつかってはいない）' },
   dispersal: { color: '122,162,255', label: 'ガス円盤が散逸', legend: '円盤のガスが消えた（画面上部に表示）' },
 };
@@ -218,6 +220,13 @@ export function createView(canvas, result) {
         ctx.beginPath(); ctx.arc(x, y, rr + 4 + 22 * birth.p, 0, Math.PI * 2); ctx.stroke();
       }
       drawPlanetSprite(ctx, x, y, rr, d, input.seed, p.id);
+      if (p.moons?.length) { // 衛星: 惑星のまわりを回る小さな点（見た目だけ。惑星が小さくても見えるよう、少し離して描く）
+        p.moons.forEach((mo, k) => {
+          const mr = rr + 4 + 3.5 * k, mth = wall * (2.2 - 0.4 * k) + k * 2.1 + p.id;
+          ctx.fillStyle = 'rgba(225,225,235,0.9)';
+          ctx.beginPath(); ctx.arc(x + mr * Math.cos(mth), y + mr * Math.sin(mth), 1.6, 0, Math.PI * 2); ctx.fill();
+        });
+      }
       if (p.id === selectedId) {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(x, y, rr + 3, 0, Math.PI * 2); ctx.stroke();

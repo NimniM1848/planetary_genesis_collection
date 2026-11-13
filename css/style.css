@@ -257,3 +257,9 @@ button.big { min-height: 48px; min-width: 120px; font-size: 1.05rem; }
 .roll-note { margin: 8px 0 0; min-height: 1.4em; }
 
 .share-hint { margin: 8px 0 0; padding: 8px 12px; background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 0.9rem; }
+
+header { position: relative; }
+.version-btn { position: absolute; top: 0; right: 0; padding: 2px 10px; min-height: 0; border-radius: 999px; background: transparent; font-size: 0.8rem; opacity: 0.85; }
+.changelog-body h4 { margin: 14px 0 4px; }
+.changelog-body ul { margin: 4px 0 0; padding-left: 1.2em; }
+.changelog-body li { margin: 4px 0; }

@@ -75,6 +75,28 @@ export function createDisk(star, dp, params) {
   const jRef = Math.min(N - 1, Math.max(0, Math.floor((N * Math.log(1 / rIn)) / Math.log(rOut / rIn))));
   const sigmaRef = gas[jRef] / area[jRef];
 
+  // 小石の流入（v2）: 外から流れ込む小石が、スノーライン内側に溜まる。内側の岩石・金属の表面密度が増え、そこで育つ種（孤立質量）が重くなる。
+  // 足す量 = スノーライン外側の固体の質量 × 岩石・金属の割合 × pebbleFrac。外側の固体は減らさない（遠い円盤から来る分として足す）。
+  // 足した分は、初期の総量（mInitial）に含めるので、質量保存の検査は、そのまま成り立つ。
+  if (params.pebbleFrac > 0) {
+    let outerSolid = 0;
+    for (let j = 0; j < N; j++) outerSolid += (rock[j] + metal[j] + ice[j]) * outerFrac[j];
+    const refractoryShare = params.zetaRock / (params.zetaRock + params.zetaIce);
+    const inflow = params.pebbleFrac * refractoryShare * outerSolid;
+    const recv = new Float64Array(N); // 受け取る重み（スノーライン内側のセル。固体の表面密度 ∝ r^-κ）
+    let wSum = 0;
+    for (let j = 0; j < N; j++) {
+      if (edges[j + 1] <= snow) { recv[j] = area[j] * Math.pow(center[j], -params.pebbleKappa); wSum += recv[j]; }
+    }
+    if (wSum > 0) {
+      for (let j = 0; j < N; j++) {
+        const add = (inflow * recv[j]) / wSum;
+        metal[j] += add * params.fMetal;
+        rock[j] += add * (1 - params.fMetal);
+      }
+    }
+  }
+
   const solid0 = new Float64Array(N);
   let mInitial = 0;
   for (let j = 0; j < N; j++) {

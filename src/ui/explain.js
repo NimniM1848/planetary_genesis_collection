@@ -16,7 +16,10 @@ export function eventText(e, nameOf) {
 function eventBody(e, nameOf, d) {
   switch (e.kind) {
     case 'gasRunaway': return `${nameOf(e.ids[0])} がガスを暴走的に集め始めた（${fmtMass(d.mass)}）`;
-    case 'merge': return `${nameOf(e.ids[0])} と ${nameOf(e.ids[1])} が合体（${fmtMass(d.mass)}）`;
+    case 'merge': return `${nameOf(e.ids[0])} と ${nameOf(e.ids[1])} が合体（${fmtMass(d.mass)}）` +
+      (d.outcome === 'partial' ? (d.moonMass > 0 ? '。斜めにぶつかり、破片が飛び散って衛星ができた' : '。斜めにぶつかり、破片が飛び散った') : '');
+    case 'graze': return `${nameOf(e.ids[0])} と ${nameOf(e.ids[1])} がかすめてぶつかり、合体せずに離れた`;
+    case 'trap': return `${nameOf(e.ids[0])} がスノーライン付近の「軌道のわな」に捕まって止まった`;
     case 'scatter': return `${nameOf(e.ids[0])} と ${nameOf(e.ids[1])} が散乱して軌道が乱れた`;
     case 'eject': return `${nameOf(e.ids[0])}（${fmtMass(d.mass)}）が系外へ放出された`;
     case 'innerEdge': return `${nameOf(e.ids[0])} が円盤の内縁に達した`;
@@ -78,6 +81,9 @@ export function explainResult(result, nameOf) {
   } else {
     lines.push('惑星どうしの合体は起きなかった。');
   }
+
+  const moonMerges = merges.filter((e) => e.data.moonMass > 0).length;
+  if (moonMerges) lines.push(`斜めの衝突で飛び散った破片から、衛星ができたことが ${moonMerges} 回あった。`);
 
   // 4. 散乱と放出
   const ejects = events.filter((e) => e.kind === 'eject');
@@ -144,6 +150,7 @@ export function explainSimple(result, nameOf) {
   if (merges) parts.push(`近くにいた惑星どうしがぶつかって一つになることが ${merges} 回ありました`);
   if (ejects) parts.push(`重い惑星の重力で弾き飛ばされ、系の外へ出ていった惑星が ${ejects} 個いました`);
   if (parts.length) lines.push(parts.join('。') + '。');
+  if (final.some((p) => p.moons?.length)) lines.push('ぶつかった勢いで飛び散った破片が集まって、月のような衛星ができた惑星もあります。');
 
   // 5. 条件を変えると
   if (!giants.length && star.Z < 2) lines.push('試しに、金属量を上げてもう一度つくると、巨大ガス惑星ができやすくなります。');
@@ -154,7 +161,7 @@ export function explainSimple(result, nameOf) {
 /** できごとの年表（くわしい説明用）。散乱は多いので除く */
 export function eventTimeline(result, nameOf, limit = 40) {
   return result.events
-    .filter((e) => e.kind !== 'scatter')
+    .filter((e) => e.kind !== 'scatter' && e.kind !== 'trap')
     .slice(0, limit)
     .map((e) => ({ t: e.t, text: eventText(e, nameOf) }));
 }

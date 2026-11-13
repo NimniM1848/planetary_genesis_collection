@@ -143,7 +143,7 @@ await test('開いた詳細設定・凡例は、下の閉じるボタンで閉�
     assert.equal($(box).open, false, `${box} が閉じない`);
   }
 });
-await test('詳細設定: 各欄に目安の説明が出て、目安の外の値には注意が出る。凡例は 6 種類', async () => {
+await test('詳細設定: 各欄に目安の説明が出て、目安の外の値には注意が出る。凡例は 8 種類', async () => {
   assert.ok($('h-f-rout').textContent.includes('直径ではありません'), $('h-f-rout').textContent);
   assert.ok($('h-f-rout').textContent.includes('目安 25〜60 AU'));
   $('f-rout').value = '70';
@@ -153,7 +153,7 @@ await test('詳細設定: 各欄に目安の説明が出て、目安の外の値
   $('f-rout').value = '30';
   for (const f of $('f-rout').listeners.input ?? []) f({});
   assert.equal($('h-f-rout').className, 'hint-f');
-  assert.equal($('legend').children.length, 6);
+  assert.equal($('legend').children.length, 8);
 });
 await test('「惑星系をつくる」→ 計算 → 再生ループが動き、軌道図が毎フレーム描かれ続ける', async () => {
   $('presets').children[0].click(); // 「標準」（この検査は、標準の設定と結果を前提にする）
@@ -185,8 +185,8 @@ await test('最後まで再生すると結果が出て、その後も公転は�
   assert.equal(calls.clear - c0, 20, '完成後に描画が止まった');
   assert.equal($('btn-play').textContent, '一時停止');
 });
-await test('惑星の系統の凡例: 10 行あり、完成した系の惑星の個数と合う。スローの既定は「ゆっくり」', async () => {
-  assert.equal($('planet-legend').children.length, 10);
+await test('惑星の系統の凡例: 11 行あり、完成した系の惑星の個数と合う。スローの既定は「ゆっくり」', async () => {
+  assert.equal($('planet-legend').children.length, 11);
   const total = $('planet-legend').children.reduce((sum, li) => sum + (Number(li.children[2].textContent) || 0), 0);
   assert.ok(total >= 1, '凡例の個数が出ていない');
   const r = lastResult();
@@ -347,7 +347,7 @@ await test('図鑑の画面（惑星図鑑）: 完成度・マス・希少度順
   assert.equal($('btn-play').textContent, '再開', '図鑑を見ている間は再生を止める');
   assert.ok(/完成度: \d+ \/ \d+ マス/.test($('dex-progress').textContent), $('dex-progress').textContent);
   const tbody = $('dex-grid').children[1];
-  assert.equal(tbody.children.length, 8, '行は 8 分類');
+  assert.equal(tbody.children.length, 9, '行は 9 分類');
   const onCells = findAll($('dex-grid'), (e) => String(e.className).includes('cell on'));
   assert.ok(onCells.length >= 1, '埋まったマスがある');
   const n = $('dex-plist').children.length;

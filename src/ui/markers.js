@@ -31,7 +31,7 @@ export function newMarkers(events, tFrom, tTo, hitOf, letterOf, born, seenPairs 
     if (a === null) continue;
     const ang = hit?.ang ?? (e.ids[0] * 2.399963) % (Math.PI * 2);
     const label = e.kind === 'merge' ? `${st.label} ${letterOf(e.ids[0])}+${letterOf(e.ids[1])}`
-      : e.kind === 'scatter' ? `${st.label} ${letterOf(e.ids[0])}・${letterOf(e.ids[1])}` : `${st.label} ${letterOf(e.ids[0])}`;
+      : (e.kind === 'scatter' || e.kind === 'graze') ? `${st.label} ${letterOf(e.ids[0])}・${letterOf(e.ids[1])}` : `${st.label} ${letterOf(e.ids[0])}`;
     out.push({ kind: e.kind, id: e.ids[0], a, ang, born, label, desc: hit?.desc ?? null, rr: hit?.rr ?? 4 });
   }
   return out;

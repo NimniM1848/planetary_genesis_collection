@@ -22,6 +22,8 @@ export function planetColor(cls, teq) {
       return { fill: hsl(220, 55, 52), accent: hsl(230, 50, 38), glow: null };
     case 'ミニネプチューン':
       return { fill: hsl(195, 42, 62), accent: hsl(205, 40, 46), glow: null };
+    case '海洋惑星':
+      return { fill: hsl(205, 75, 38), accent: hsl(190, 60, 55), glow: teq > 600 ? 'rgba(120,200,255,0.4)' : null }; // 深い青（高温なら、水蒸気で白っぽく光る）
     case '氷惑星':
       return { fill: hsl(200, 30, 82), accent: hsl(210, 30, 65), glow: null };
     default: // 岩石惑星・スーパーアース・巨大岩石惑星
@@ -55,6 +57,7 @@ export const PLANET_LEGEND = [
   { key: 'ネプチューン級', cls: 'ネプチューン級', teq: 80, desc: '海王星くらいの、ガスをまとった惑星' },
   { key: 'ミニネプチューン', cls: 'ミニネプチューン', teq: 200, desc: '地球より大きく、厚い大気をもつ小さめの惑星' },
   { key: '氷惑星', cls: '氷惑星', teq: 80, desc: '氷が主体の、固体の惑星' },
+  { key: '海洋惑星', cls: '海洋惑星', teq: 350, desc: '氷（水）を多く含み、氷が解ける温度の、固体の惑星' },
   { key: 'スーパーアース', cls: 'スーパーアース', teq: 300, desc: '地球より重い、岩石の惑星' },
   { key: '岩石惑星', cls: '岩石惑星', teq: 300, desc: '地球のような、岩石の惑星' },
   { key: '巨大岩石惑星', cls: '巨大岩石惑星', teq: 300, desc: 'とても重い岩石の惑星' },

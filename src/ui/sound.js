@@ -25,6 +25,12 @@ export const SOUND_SPECS = {
   scatter: [ // チッ（小さく）
     { type: 'sine', f0: 1320, f1: 1100, at: 0, dur: 0.1, gain: 0.12 },
   ],
+  graze: [ // コッ
+    { type: 'triangle', f0: 600, f1: 420, at: 0, dur: 0.14, gain: 0.16 },
+  ],
+  trap: [ // ポーン（やわらかく）
+    { type: 'sine', f0: 660, f1: 660, at: 0, dur: 0.3, gain: 0.1 },
+  ],
   dispersal: [ // ふわっと広がる和音
     { type: 'sine', f0: 392, f1: 392, at: 0, dur: 1.6, gain: 0.12 },
     { type: 'sine', f0: 494, f1: 494, at: 0.05, dur: 1.6, gain: 0.12 },

@@ -21,6 +21,7 @@ import { createIntroUi } from './intro_ui.js';
 import { drawDiskPreview, solidTotal, plannedSeeds } from './diskpreview.js';
 import { snowline } from '../sim/disk.js';
 import { MODEL_VERSION } from '../sim/params.js';
+import { APP_VERSION, CHANGELOG } from './changelog.js';
 import { drawSystemCard, drawPlanetCard } from './shareimg.js';
 
 const $ = (id) => document.getElementById(id);
@@ -618,6 +619,17 @@ function init() {
     $(btn).addEventListener('click', () => { $(box).open = false; $(box).scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); });
   }
   $('foot-version').textContent = MODEL_VERSION;
+  $('btn-version').textContent = APP_VERSION;
+  $('changelog-body').replaceChildren(...CHANGELOG.flatMap((c) => {
+    const h = document.createElement('h4'); h.textContent = `${c.version}　${c.title}`;
+    const ul = document.createElement('ul');
+    for (const s of c.items) { const li = document.createElement('li'); li.textContent = s; ul.append(li); }
+    return [h, ul];
+  }));
+  const closeLog = () => { $('changelog').hidden = true; };
+  $('btn-version').addEventListener('click', () => { $('changelog').hidden = false; });
+  $('changelog-close').addEventListener('click', closeLog);
+  $('changelog').addEventListener('click', (e) => { if (e.target === $('changelog')) closeLog(); });
   window.addEventListener('resize', () => redrawPreview());
   buildFieldGuide();
   buildLegend();
