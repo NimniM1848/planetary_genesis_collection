@@ -14,7 +14,7 @@ import { planetCardNodes, textEl } from './cards.js';
 import { createStore } from '../dex/store.js';
 import { buildSystemRecord, buildPlanetRecords } from '../dex/records.js';
 import { rarityOfSystem, rarityOfPlanet } from '../dex/rarity.js';
-import { parseShareHash, buildShareUrl, isPublicUrl, systemShareText, planetShareText, modelMatches } from '../dex/share.js';
+import { epochUrl, parseShareHash, buildShareUrl, isPublicUrl, systemShareText, planetShareText, modelMatches } from '../dex/share.js';
 import { createDexUi } from './dex_ui.js';
 import { createShareUi } from './share_ui.js';
 import { createIntroUi } from './intro_ui.js';
@@ -612,6 +612,10 @@ function init() {
   $('btn-share-system').addEventListener('click', () => {
     const r = state.result;
     if (r) shareSystem({ name: systemName(r.input.seed), input: r.input, final: r.final });
+  });
+  $('btn-epoch').addEventListener('click', () => { // 続編へ（この系を持って、別のタブで開く）
+    const r = state.result;
+    if (r) globalThis.open?.(epochUrl(r.input), '_blank', 'noopener');
   });
   refreshBadge();
   // 開いた詳細設定・凡例は、いちばん下のボタンで閉じられる（閉じたら、見出しの位置に戻る）

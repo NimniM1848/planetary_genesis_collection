@@ -363,6 +363,11 @@ await test('図鑑の画面（惑星図鑑）: 完成度・マス・希少度順
   sel[0].click(); // 解除
   assert.equal($('dex-plist').children.length, n);
 });
+await test('続編: 「この系の、その後を見る」を押すと、系のデータ付きの続編のリンクが、別のタブで開く', async () => {
+  $('tab-make').click(); const opened = [], orig = globalThis.open; globalThis.open = (...a) => { opened.push(a); };
+  try { $('btn-epoch').click(); } finally { globalThis.open = orig; }
+  assert.equal(opened.length, 1); assert.match(opened[0][0], /^https:\/\/nimnim1848\.github\.io\/planetary_epoch\/#s=[A-Za-z0-9_-]+$/); assert.equal(opened[0][1], '_blank'); assert.match(opened[0][2], /noopener/);
+});
 await test('共有: 結果から共有ダイアログが開き、画像が描かれ、X の投稿画面を開く。localhost ではリンクを付けず、シードを入れる', async () => {
   $('tab-make').click();
   const fills = calls.fillText;

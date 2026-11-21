@@ -47,6 +47,10 @@ export function decodeShare(str) {
 
 export const buildShareUrl = (base, input) => `${base}#s=${encodeShare(input)}`;
 
+/** 続編「PLANETARY EPOCH」。系のデータを付けて開くと、その系の岩石惑星を選んで、その後の歴史を眺められる */
+export const EPOCH_URL = 'https://nimnim1848.github.io/planetary_epoch/';
+export const epochUrl = (input) => buildShareUrl(EPOCH_URL, input);
+
 /** `#s=...` を含むハッシュから条件を取り出す。無ければ null */
 export function parseShareHash(hash) {
   const m = /^#s=([A-Za-z0-9_-]+)$/.exec(hash ?? '');

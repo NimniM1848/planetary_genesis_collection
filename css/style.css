@@ -247,6 +247,7 @@ button.big { min-height: 48px; min-width: 120px; font-size: 1.05rem; }
 .foot { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.78rem; }
 .foot p { margin: 0 0 6px; }
 .foot-version { opacity: 0.8; }
+.foot a { color: var(--accent); }
 
 /* ---- 初期の円盤（設定の画面） ---- */
 .disk-preview h3 { margin-top: 16px; }

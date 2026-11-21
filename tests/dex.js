@@ -8,7 +8,7 @@ import { DEX_CLASSES, DEX_TAGS, comboKey, planetFeatures, systemPatterns, isSola
 import { tierOfCombo, rarityOfPlanet, rarityOfSystem, tierOfPattern, stars, TIER_LABELS } from '../src/dex/rarity.js';
 import { createStore, systemId, cellsOf, possibleCells, MAX_SYSTEMS, STORE_KEY } from '../src/dex/store.js';
 import { buildSystemRecord, buildPlanetRecords } from '../src/dex/records.js';
-import { encodeShare, decodeShare, parseShareHash, buildShareUrl, isPublicUrl, systemShareText, planetShareText, xIntentUrl } from '../src/dex/share.js';
+import { EPOCH_URL, epochUrl, encodeShare, decodeShare, parseShareHash, buildShareUrl, isPublicUrl, systemShareText, planetShareText, xIntentUrl } from '../src/dex/share.js';
 
 let failed = 0;
 const test = (name, fn) => {
@@ -220,6 +220,10 @@ test('共有リンク: 条件を符号化して戻すと一致する（ランダ
     assert.deepEqual(out.input, { ...input, seeds: [] });
     assert.equal(systemId(out.input), systemId({ ...input, seeds: [] }), '同じ惑星系の識別子になる');
   }
+});
+test('続編へのリンク: 絶対URL＋#s=…。同じ系を再現できる条件が入る', () => {
+  const input = randomInput(9), u = epochUrl(input); assert.ok(u.startsWith('https://nimnim1848.github.io/planetary_epoch/#s=')); assert.equal(EPOCH_URL, 'https://nimnim1848.github.io/planetary_epoch/');
+  const back = decodeShare(u.split('#s=')[1]); assert.ok(back.ok); assert.equal(back.input.seed, input.seed); assert.deepEqual(back.input.star, input.star);
 });
 test('共有リンク: 同じ条件から、同じ惑星系が再現される', () => {
   const input = randomInput(9);
